@@ -4,10 +4,9 @@
 // utilizarea bibliotecii OpenGL). Functiile din biblioteca
 // OpenGL sunt prefixate cu gl, cele din GLU cu glu si
 // cele din GLUT cu glut.
-#include <GL/glut.h>
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <GL/glut.h>
 #include <math.h>
 
 unsigned char prevKey;

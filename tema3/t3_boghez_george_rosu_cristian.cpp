@@ -7,38 +7,28 @@
 #include <GL/glut.h>
 
 #define dim 300
+#define CIRCLE_EDGES 20
 
 unsigned char prevKey;
 
 class GrilaCarteziana {
 private:
 	int x, y;
-	double dc, dl, cx, cy, eps;
+	double dc, dl, cx, cy, epsX, epsY, RADIUS;
 public:
 	int n, m;
 	GrilaCarteziana(int n, int m, int ci, int cj) {
 		this->n = n;
 		this->m = m;
-		this->eps = 0.1;
+		this->epsX = 0.1;
+		this->epsY = 0.1;
+		this->RADIUS = 0.64 / m;
 		this->x = ci;
 		this->y = cj;
-		this->dc = (2 - 2 * eps) / (m - 1);
-		this->dl = (2 - 2 * eps) / (n - 1);
-		this->cx = -1 + eps + x * dc;
-		this->cy = -1 + eps + y * dl;
-	}
-
-	void afisarePuncteCerc3(int x, int y, std::vector<std::pair<int, int>> &M) {
-		M.push_back({ x, y });
-		M.push_back({ -x, -y });
-		M.push_back({ -x, y });
-		M.push_back({ x, -y });
-		if (x != y) {
-			M.push_back({ y, x });
-			M.push_back({ -y, -x });
-			M.push_back({ -y, x });
-			M.push_back({ y, -x });
-		}
+		this->dc = (2 - 2 * epsX) / (m - 1);
+		this->dl = (2 - 2 * epsY) / (n - 1);
+		this->cx = -1 + epsX + x * dc;
+		this->cy = -1 + epsY + y * dl;
 	}
 
 	double convertX(int x) {
@@ -49,44 +39,10 @@ public:
 		return cy + y * dl;
 	}
 
-	void afisareCerc4(int r) {
-		int x = 0, y = r;
-		int d = 1 - r;
-		int dE = 3, dSE = -2 * r + 5;
-		std::vector<std::pair<int, int>> M;
-		afisarePuncteCerc3(x, y, M);
-		while (y > x) {
-			if (d < 0) {
-				d += dE;
-				dE += 2;
-				dSE += 2;
-			}
-			else
-			{
-				d += dSE;
-				dE += 2;
-				dSE += 2;
-			}
-			x++;
-			afisarePuncteCerc3(x, y, M);
-		}
-		glColor3f(1, 0, 0);
-		glBegin(GL_LINE_STRIP);
-		for (auto p : M) {
-			//printf("(%f, %f)\n", convertX(p.first), convertY(p.second));
-			double new_x = convertX(r * cos(p.first));
-			double new_y = convertY(r * sin(p.second));
-			printf("(%d, %d)\n", p.first, p.second);
-			printf("(%f, %f)\n", new_x, new_y);
-			glVertex2f(new_x, new_y);
-		}
-		glEnd();
-	}
-
 	// to be replaced
 	void drawCircle(float cx, float cy, float r, int num_segments) {
 		glColor3f(0, 0, 0);
-		glBegin(GL_LINE_LOOP);
+		glBegin(GL_POLYGON);
 		for (int ii = 0; ii < num_segments; ii++) {
 			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
 			float x = r * cosf(theta); //calculate the x component 
@@ -111,96 +67,92 @@ public:
 	void writePixel(int x, int y) {
 		double xGL = convertX(x);
 		double yGL = convertY(y);
-		drawCircle(xGL, yGL, .04, 10);
+		drawCircle(xGL, yGL, RADIUS, CIRCLE_EDGES);
 	}
 
 
 	void afisareSegmentDreapta3(int x0, int y0, int xn, int yn) {
 		drawLine(x0, y0, xn, yn);
-		int dx = xn - x0;
-		int dy = yn - y0;
-		int d = 2 * dy - dx;
-		int dE = 2 * dy;
-		int dNE = 2 * (dy - dx);
-
-		int x = x0;
-		int y = y0;
-		
-		drawCircle(convertX(x), convertY(y), 0.04, 10);
-		while (x < xn) {
-			if (d <= 0) {
-				d += dE;
-				x++;
-			}
-			else
-			{
-				d += dNE;
-				x++;
-				y++;
-			}
-			drawCircle(convertX(x), convertY(y), .04, 10);
-		}
-	}
-
-
-	void afisareSegmentDreapta4(int x0, int y0, int xn, int yn) {
-		drawLine(x0, y0, xn, yn);
-		int dx = xn - x0;
-		int dy = yn - y0;
-
-		int d = 2 * dy - dx;
-		
-		int dE = 2 * dy;
-		int dNE = 2 * (dy - dx);
-
 		int x = x0;
 		int y = y0;
 
 		while (x <= xn)
 		{
-			drawCircle(convertX(x), convertY(y), 0.04, 10);
-			drawCircle(convertX(x + 1), convertY(y), 0.04, 10); // E
-			drawCircle(convertX(x + 1), convertY(y + 1), 0.04, 10); // NE
-			drawCircle(convertX(x), convertY(y + 1), 0.04, 10); // N
-			drawCircle(convertX(x - 1), convertY(y + 1), 0.04, 10); // NV
-			drawCircle(convertX(x - 1), convertY(y), 0.04, 10); // V
-			drawCircle(convertX(x - 1), convertY(y - 1), 0.04, 10); //SV
-			drawCircle(convertX(x), convertY(y - 1), 0.04, 10); // S
-			drawCircle(convertX(x + 1), convertY(y - 1), 0.04, 10); // SE
+			drawCircle(convertX(x), convertY(y), RADIUS, CIRCLE_EDGES);
+			if (isInsideGrid(x + 1, y)) {
+				drawCircle(convertX(x + 1), convertY(y), RADIUS, CIRCLE_EDGES); // E
+			}
+			x += 2;
+			y += 1;
+		}
+	}
+
+	bool isInsideGrid(int x, int y) {
+		return x >= 0 && x < m && y >= 0 && y < n;
+	}
+
+	void afisareSegmentDreapta4(int x0, int y0, int xn, int yn) {
+		drawLine(x0, y0, xn, yn);
+		int x = x0;
+		int y = y0;
+
+		int directionsX[3]= { -1, 0, 1 };
+		int directionsY[3] = { -1, 0, 1 };
+
+		while (x <= xn)
+		{
+			for (int dx : directionsX) {
+				for (int dy : directionsY) {
+					if (isInsideGrid(x + dx, y + dy))
+						drawCircle(convertX(x + dx), convertY(y + dy), RADIUS, CIRCLE_EDGES);
+				}
+			}
+			//drawCircle(convertX(x), convertY(y), RADIUS, CIRCLE_EDGES);
+			//drawCircle(convertX(x + 1), convertY(y), RADIUS, CIRCLE_EDGES); // E
+			//drawCircle(convertX(x), convertY(y + 1), RADIUS, CIRCLE_EDGES); // N
+			//drawCircle(convertX(x - 1), convertY(y + 1), RADIUS, CIRCLE_EDGES); // NV
+			//drawCircle(convertX(x - 1), convertY(y), RADIUS, CIRCLE_EDGES); // V
+			//drawCircle(convertX(x - 1), convertY(y - 1), RADIUS, CIRCLE_EDGES); //SV
+			//drawCircle(convertX(x), convertY(y - 1), RADIUS, CIRCLE_EDGES); // S
+			//drawCircle(convertX(x + 1), convertY(y - 1), RADIUS, CIRCLE_EDGES); // SE
 			x += 3;
 			y -= 1;
 		}
 	}
-	
 
-	void draw() {
+	void deseneazaGrila() {
 		glColor3f(0, 0, 0);
 		for (int i = 0; i < m; i++) {
 			glBegin(GL_LINE_STRIP);
-			glVertex2f(-1 + eps + i * dc, -1 + eps);
-			glVertex2f(-1 + eps + i * dc, 1 - eps);
+			glVertex2f(-1 + epsX + i * dc, -1 + epsY);
+			glVertex2f(-1 + epsX + i * dc, 1 - epsY);
 			glEnd();
 		}
 
 		for (int i = 0; i < n; i++) {
 			glBegin(GL_LINE_STRIP);
-			glVertex2f(-1 + eps, -1 + eps + i * dl);
-			glVertex2f(1 - eps, -1 + eps + i * dl);
+			glVertex2f(-1 + epsX, -1 + epsY + i * dl);
+			glVertex2f(1 - epsX, -1 + epsY + i * dl);
 			glEnd();
 		}
+	}
 
+	void deseneazaAxeOrigine() {
 		glColor3f(0, 0, 1);
 		glBegin(GL_LINE_STRIP);
-		glVertex2f(-1 + eps + x * dc, -1 + eps);
-		glVertex2f(-1 + eps + x * dc, 1 - eps);
+		glVertex2f(-1 + epsX + x * dc, -1 + epsY);
+		glVertex2f(-1 + epsX + x * dc, 1 - epsY);
 		glEnd();
 
 		glBegin(GL_LINE_STRIP);
-		glVertex2f(-1 + eps, -1 + eps + y * dl);
-		glVertex2f(1 - eps, -1 + eps + y * dl);
+		glVertex2f(-1 + epsX, -1 + epsY + y * dl);
+		glVertex2f(1 - epsX, -1 + epsY + y * dl);
 		glEnd();
-
-		//writePixel(1, 1);
+	}
+	
+	void draw() {
+		deseneazaGrila();
+		deseneazaAxeOrigine();
 
 		afisareSegmentDreapta3(0, 0, 15, 7);
 
@@ -210,12 +162,11 @@ public:
 
 
 void Init(void) {
-
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
-	glLineWidth(3);
+	glLineWidth(2);
 
-	glPolygonMode(GL_FRONT, GL_LINE);
+	glPolygonMode(GL_FRONT, GL_FILL);
 }
 
 void Display(void) {

@@ -54,6 +54,18 @@ public:
 		glEnd();
 	}
 
+	void drawEllipse(float cx, float cy, float a, float b, int num_segments) {
+		glColor3f(1, 0, 0);
+		glBegin(GL_LINE_STRIP);
+		for (int ii = 0; ii < num_segments; ii++) {
+			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
+			float x = a * cosf(theta); //calculate the x component 
+			float y = b * sinf(theta); //calculate the y component
+			glVertex2f(x + cx, y + cy); //output vertex
+		}
+		glEnd();
+	}
+
 
 	void drawArc(float cx, float cy, float r, int num_segments) {
 		glColor3f(1, 0, 0);
@@ -70,19 +82,19 @@ public:
 
 	void afisarePuncteCerc3(int x, int y, vector<pair<int, int>> &m) {
 		m.push_back({ x, y });
-		m.push_back({ x+1, y });
-		m.push_back({ x-1, y });
+		m.push_back({ x + 1, y });
+		m.push_back({ x - 1, y });
 	}
 
 
-	void afisareCerc4(int cx, int cy, int r) {
-		drawArc(convertX(cx), convertY(cy), dc*r, 100);
+	void afisareCerc4(int x0, int y0, int r) {
+		drawArc(convertX(x0), convertY(y0), dc*r, 100);
 
 		int x = r, y = 0;
 		int d = 1 - r;
 		int dN = 3;
 		int dNV = -2 * r + 5;
-		vector<pair<int, int>> m; 
+		vector<pair<int, int>> m;
 		afisarePuncteCerc3(x, y, m);
 
 		while (x > y) {
@@ -102,7 +114,56 @@ public:
 		}
 
 		for (auto coord : m) {
-			writePixel(coord.first + cx, coord.second + cy);
+			writePixel(coord.first + x0, coord.second + y0);
+		}
+	}
+
+	void umplereElipsa(int x0, int y0, float a, float b) {
+		int xi = 0, x = 0, y = -b;
+		double fxpyp = 0;
+		double deltaE, deltaSE, deltaS;
+
+		vector<pair<int, int>> ssm;
+		ssm.push_back({ x + x0, y + y0});
+
+		while (a*a*(y + 0.5) < b*b*(x + 1)) {
+			deltaE = b * b*(2 * x + 1);
+			deltaSE = b * b*(2 * x + 1) + a * a*(-2 * y + 1);
+			if (fxpyp + deltaE > 0) {
+				fxpyp += deltaE;
+				x--;
+				ssm.push_back({ x + x0, y + y0});
+			}
+			else if (fxpyp + deltaSE > 0) {
+				fxpyp += deltaSE;
+				x--;
+				y++;
+				ssm.push_back({ x + x0, y + y0 });
+			}
+		}
+
+		while (y < 0) {
+			deltaSE = b * b*(2 * x + 1) + a * a*(-2 * y + 1);
+			deltaS = a * a*(-2 * y + 1);
+			if (fxpyp + deltaSE <= 0) {
+				fxpyp += deltaSE;
+				x--;
+				y++;
+			}
+			else
+			{
+				fxpyp += deltaS;
+				y++;
+			}
+			ssm.push_back({ x + x0, y + y0 });
+		}
+
+		for (auto coords : ssm) {
+			cout << coords.first << ' ' << coords.second << endl;
+			writePixel(coords.first, coords.second);
+			for (int j = coords.second; j <= y0; j++) {
+				writePixel(coords.first, j);
+			}
 		}
 	}
 
@@ -202,7 +263,9 @@ public:
 		deseneazaGrila();
 		deseneazaAxeOrigine();
 
-		afisareCerc4(5, 0, 7);
+		//afisareCerc4(0, 0, 14);
+		drawEllipse(convertX(13), convertY(7), dc*13, dc*7, 100);
+		umplereElipsa(13, 7, 13, 7);
 	}
 };
 
@@ -217,7 +280,7 @@ void Init(void) {
 
 void Display(void) {
 	glClear(GL_COLOR_BUFFER_BIT);
-	GrilaCarteziana GC(16, 16, 0, 0);
+	GrilaCarteziana GC(27, 27, 0, 0);
 	GC.draw();
 	glFlush();
 }

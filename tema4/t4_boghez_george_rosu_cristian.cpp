@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <vector>
 #include <math.h>
+#include <algorithm>
+#include <fstream>
 #include <GL/glut.h>
 
 #define dim 300
@@ -12,6 +14,8 @@
 using namespace std;
 
 unsigned char prevKey;
+
+ifstream f("polygon.txt");
 
 class GrilaCarteziana {
 private:
@@ -40,139 +44,6 @@ public:
 	double convertY(int y) {
 		return cy + y * dl;
 	}
-
-	// to be replaced
-	void drawCircle(float cx, float cy, float r, int num_segments) {
-		glColor3f(0, 0, 0);
-		glBegin(GL_POLYGON);
-		for (int ii = 0; ii < num_segments; ii++) {
-			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
-			float x = r * cosf(theta); //calculate the x component 
-			float y = r * sinf(theta); //calculate the y component 
-			glVertex2f(x + cx, y + cy); //output vertex
-		}
-		glEnd();
-	}
-
-	void drawEllipse(float cx, float cy, float a, float b, int num_segments) {
-		glColor3f(1, 0, 0);
-		glBegin(GL_LINE_STRIP);
-		for (int ii = 0; ii < num_segments; ii++) {
-			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
-			float x = a * cosf(theta); //calculate the x component 
-			float y = b * sinf(theta); //calculate the y component
-			glVertex2f(x + cx, y + cy); //output vertex
-		}
-		glEnd();
-	}
-
-
-	void drawArc(float cx, float cy, float r, int num_segments) {
-		glColor3f(1, 0, 0);
-		glBegin(GL_LINE_STRIP);
-		for (int ii = 0; ii < num_segments / 4 + 1; ii++) {
-			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
-			float x = r * cosf(theta); //calculate the x component 
-			float y = r * sinf(theta); //calculate the y component 
-			glVertex2f(x + cx, y + cy); //output vertex
-		}
-		glEnd();
-	}
-
-
-	void afisarePuncteCerc3(int x, int y, vector<pair<int, int>> &m) {
-		m.push_back({ x, y });
-		m.push_back({ x + 1, y });
-		m.push_back({ x - 1, y });
-	}
-
-
-	void afisareCerc4(int x0, int y0, int r) {
-		drawArc(convertX(x0), convertY(y0), dc*r, 100);
-
-		int x = r, y = 0;
-		int d = 1 - r;
-		int dN = 3;
-		int dNV = -2 * r + 5;
-		vector<pair<int, int>> m;
-		afisarePuncteCerc3(x, y, m);
-
-		while (x > y) {
-			if (d < 0) {
-				d += dN;
-				dN += 2;
-				dNV += 2;
-			}
-			else {
-				d += dNV;
-				dN += 2;
-				dNV += 4;
-				x--;
-			}
-			y++;
-			afisarePuncteCerc3(x, y, m);
-		}
-
-		for (auto coord : m) {
-			writePixel(coord.first + x0, coord.second + y0);
-		}
-	}
-
-	void umplereElipsa(int x0, int y0, float a, float b) {
-		drawEllipse(convertX(x0), convertY(y0), dc * a, dc * b, 100);
-
-		int xi = 0, x = 0, y = -b;
-		double fxpyp = 0;
-		double deltaV, deltaNV, deltaN;
-
-		vector<pair<int, int>> ssm;
-		ssm.push_back({ x + x0, y + y0});
-
-		while (a*a*(y - 0.5) < b*b*(x + 1)) {
-			deltaV = b * b*(-2 * x + 1);
-			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
-
-			if (fxpyp + deltaV <= 0) {
-				fxpyp += deltaV;
-				x--;
-				ssm.push_back({ x + x0, y + y0});
-			}
-			else if (fxpyp + deltaNV <= 0) {
-				fxpyp += deltaNV;
-				x--;
-				y++;
-				ssm.push_back({ x + x0, y + y0 });
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		while (y < 0) {
-			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
-			deltaN = a * a*(2 * y + 1);
-			if (fxpyp + deltaNV <= 0) {
-				fxpyp += deltaNV;
-				x--;
-				y++;
-			}
-			else
-			{
-				fxpyp += deltaN;
-				y++;
-			}
-			ssm.push_back({ x + x0, y + y0 });
-		}
-
-		for (auto coords : ssm) {
-			writePixel(coords.first, coords.second);
-			for (int j = coords.second; j <= y0; j++) {
-				writePixel(coords.first, j);
-			}
-		}
-	}
-
 
 	void drawLine(int x0, int y0, int xn, int yn) {
 		double x0GL = convertX(x0);
@@ -265,12 +136,327 @@ public:
 		glEnd();
 	}
 
+	// to be replaced
+	void drawCircle(float cx, float cy, float r, int num_segments) {
+		glColor3f(0, 0, 0);
+		glBegin(GL_POLYGON);
+		for (int ii = 0; ii < num_segments; ii++) {
+			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
+			float x = r * cosf(theta); //calculate the x component 
+			float y = r * sinf(theta); //calculate the y component 
+			glVertex2f(x + cx, y + cy); //output vertex
+		}
+		glEnd();
+	}
+
+	void drawEllipse(float cx, float cy, float a, float b, int num_segments) {
+		glColor3f(1, 0, 0);
+		glBegin(GL_LINE_STRIP);
+		for (int ii = 0; ii < num_segments; ii++) {
+			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
+			float x = a * cosf(theta); //calculate the x component 
+			float y = b * sinf(theta); //calculate the y component
+			glVertex2f(x + cx, y + cy); //output vertex
+		}
+		glEnd();
+	}
+
+
+	void drawArc(float cx, float cy, float r, int num_segments) {
+		glColor3f(1, 0, 0);
+		glBegin(GL_LINE_STRIP);
+		for (int ii = 0; ii < num_segments / 4 + 1; ii++) {
+			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments); //get the current angle 
+			float x = r * cosf(theta); //calculate the x component 
+			float y = r * sinf(theta); //calculate the y component 
+			glVertex2f(x + cx, y + cy); //output vertex
+		}
+		glEnd();
+	}
+
+
+	void afisarePuncteCerc3(int x, int y, vector<pair<int, int>> &m) {
+		m.push_back({ x, y });
+		m.push_back({ x + 1, y });
+		m.push_back({ x - 1, y });
+	}
+
+
+	void afisareCerc4(int x0, int y0, int r) {
+		drawArc(convertX(x0), convertY(y0), dc*r, 100);
+
+		int x = r, y = 0;
+		int d = 1 - r;
+		int dN = 3;
+		int dNV = -2 * r + 5;
+		vector<pair<int, int>> m;
+		afisarePuncteCerc3(x, y, m);
+
+		while (x > y) {
+			if (d < 0) {
+				d += dN;
+				dN += 2;
+				dNV += 2;
+			}
+			else {
+				d += dNV;
+				dN += 2;
+				dNV += 4;
+				x--;
+			}
+			y++;
+			afisarePuncteCerc3(x, y, m);
+		}
+
+		for (auto coord : m) {
+			writePixel(coord.first + x0, coord.second + y0);
+		}
+	}
+
+	void umplereElipsa(int x0, int y0, float a, float b) {
+		drawEllipse(convertX(x0), convertY(y0), dc * a, dc * b, 100);
+
+		int xi = 0, x = 0, y = -b;
+		double fxpyp = 0;
+		double deltaV, deltaNV, deltaN;
+
+		vector<pair<int, int>> ssm;
+		ssm.push_back({ x + x0, y + y0 });
+
+		while (a*a*(y - 0.5) < b*b*(x + 1)) {
+			deltaV = b * b*(-2 * x + 1);
+			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
+
+			if (fxpyp + deltaV <= 0) {
+				fxpyp += deltaV;
+				x--;
+				ssm.push_back({ x + x0, y + y0 });
+			}
+			else if (fxpyp + deltaNV <= 0) {
+				fxpyp += deltaNV;
+				x--;
+				y++;
+				ssm.push_back({ x + x0, y + y0 });
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		while (y < 0) {
+			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
+			deltaN = a * a*(2 * y + 1);
+			if (fxpyp + deltaNV <= 0) {
+				fxpyp += deltaNV;
+				x--;
+				y++;
+			}
+			else
+			{
+				fxpyp += deltaN;
+				y++;
+			}
+			ssm.push_back({ x + x0, y + y0 });
+		}
+
+		for (auto coords : ssm) {
+			writePixel(coords.first, coords.second);
+			for (int j = coords.second; j <= y0; j++) {
+				writePixel(coords.first, j);
+			}
+		}
+	}
+
+	struct Varf
+	{
+		double x, y;
+	};
+
+	struct Muchie
+	{
+		Varf vi, vf;
+	};
+
+	struct Intersectie
+	{
+
+		bool operator==(const Intersectie &rhs) const {
+			return (ymax == rhs.ymax && xmin == rhs.xmin && ratia == rhs.ratia);
+		}
+
+		double ymax;
+		double xmin;
+		double ratia;
+	};
+
+
+	vector<vector<Intersectie>> initET(vector<Muchie> p)
+	{
+		vector<vector<Intersectie>> et;
+		double xm, ym, xM, yM;
+		bool change;
+
+		for (int i = 0; i < 100; ++i) {
+			vector<Intersectie> v;
+			et.push_back(v);
+		}
+
+		for (auto m : p) {
+			if (m.vi.y != m.vf.y) {
+				ym = m.vi.y < m.vf.y ? m.vi.y : m.vf.y;
+				yM = m.vi.y > m.vf.y ? m.vi.y : m.vf.y;
+				xm = ym == m.vi.y ? m.vi.x : m.vf.x;
+				xM = yM == m.vi.y ? m.vi.x : m.vf.x;
+				cout << xm << " ";
+				et[ym].push_back({ yM, xm, (xm - xM) / (ym - yM) });
+			}
+		}
+
+		for (int i = 0; i < 100; ++i) {
+			do {
+				change = false;
+				if (et[i].size() == 0) {
+					break;
+				}
+				for (int j = 1; j < et[i].size(); ++j) {
+					if (et[i][j].xmin > et[i][j - 1].xmin) {
+						Intersectie aux(et[i][j]);
+						et[i][j] = et[i][j - 1];
+						et[i][j - 1] = aux;
+						change = true;
+					}
+				}
+				//if (et[i].size() > 1) {
+				//	cout << et[i][0].xmin << " " << et[i][1].xmin << endl;
+				//}
+			} while (change);
+		}
+
+		return et;
+	}
+
+	vector<vector<Intersectie>> calculSSM(vector<Muchie> p, vector<vector<Intersectie>> et) {
+		vector<Intersectie> activeSSM;
+		vector<vector<Intersectie>> finalET;
+
+		int y = -1, k;
+
+		bool done = false;
+		for (int i = 0; i < 100; ++i) {
+			vector<Intersectie> v;
+			finalET.push_back(v);
+
+			if (!et[i].empty() && !done) {
+				y = i;
+				done = true;
+			}
+		}
+
+		if (y == -1) {
+			return finalET;
+		}
+
+		do {
+			activeSSM = et[y];
+			for (int i = 1; i <= activeSSM.size(); ++i) {
+				if (activeSSM[i].ymax == y) {
+					activeSSM.erase(remove(activeSSM.begin(), activeSSM.end(), i), activeSSM.end());
+				}
+			}
+
+			k = activeSSM.size();
+
+			while (k >= 2)
+			{
+				for (int i = 1; i < k; i++) {
+					if (activeSSM[i].xmin > activeSSM[i - 1].xmin) {
+						Intersectie aux(activeSSM[i]);
+						activeSSM[i] = activeSSM[i - 1];
+						activeSSM[i - 1] = aux;
+					}
+				}
+				k--;
+			}
+			finalET[y] = activeSSM;
+			y++;
+			for (int i = 1; i < activeSSM.size(); ++i) {
+				if (activeSSM[i].ratia != 0) {
+					activeSSM[i].xmin += activeSSM[i].ratia;
+				}
+			}
+		} while (!activeSSM.empty() || !et[y].empty());
+
+		return finalET;
+	}
+
+	void coloreaza(vector<vector<Intersectie>> finalET) {
+		for (auto i : finalET) {
+			cout << "Intersectie: " << endl;
+			for (auto j : i) {
+				cout << j.xmin << " " << j.ymax << endl;
+			}
+			cout << endl;
+		}
+	}
+
+	vector<Muchie> crearePoligon() {
+		int n;
+		f >> n;
+
+		int i = 0;
+		vector<Muchie> p;
+
+		int x, y;
+		f >> x >> y;
+		i++;
+		
+		glColor3f(1, 0, 0);
+		glBegin(GL_LINE_LOOP);
+		glVertex2f(convertX(x), convertY(y));
+		while (i < n)
+		{
+			int x2, y2;
+			f >> x2 >> y2;
+			Varf v1 = { x, y };
+			Varf v2 = { x2, y2 };
+
+			Muchie m = { v1, v2 };
+
+			p.push_back(m);
+
+			x = x2;
+			y = y2;
+
+			++i;
+
+			glVertex2f(convertX(x), convertY(y));
+		}
+
+		Muchie m = { p.back().vf, p.front().vi };
+		p.push_back(m);
+
+
+		glEnd();
+
+		return p;
+
+	}
+
 	void draw() {
 		deseneazaGrila();
 		deseneazaAxeOrigine();
 
 		//afisareCerc4(0, 0, 14);
-		umplereElipsa(13, 13, 4, 8);
+		//umplereElipsa(13, 13, 4, 8);
+		vector<Muchie> p = crearePoligon();
+		vector<vector<Intersectie>> et = initET(p);
+		et = calculSSM(p, et);
+		coloreaza(et);
+
+		/*for (auto m : p) {
+			cout << m.vi.x << " " << m.vi.y << "; "<< m.vf.x << " " << m.vf.y << endl;
+		}*/
 	}
 };
 

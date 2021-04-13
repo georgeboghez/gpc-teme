@@ -119,47 +119,53 @@ public:
 	}
 
 	void umplereElipsa(int x0, int y0, float a, float b) {
+		drawEllipse(convertX(x0), convertY(y0), dc * a, dc * b, 100);
+
 		int xi = 0, x = 0, y = -b;
 		double fxpyp = 0;
-		double deltaE, deltaSE, deltaS;
+		double deltaV, deltaNV, deltaN;
 
 		vector<pair<int, int>> ssm;
 		ssm.push_back({ x + x0, y + y0});
 
-		while (a*a*(y + 0.5) < b*b*(x + 1)) {
-			deltaE = b * b*(2 * x + 1);
-			deltaSE = b * b*(2 * x + 1) + a * a*(-2 * y + 1);
-			if (fxpyp + deltaE > 0) {
-				fxpyp += deltaE;
+		while (a*a*(y - 0.5) < b*b*(x + 1)) {
+			deltaV = b * b*(-2 * x + 1);
+			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
+
+			if (fxpyp + deltaV <= 0) {
+				fxpyp += deltaV;
 				x--;
 				ssm.push_back({ x + x0, y + y0});
 			}
-			else if (fxpyp + deltaSE > 0) {
-				fxpyp += deltaSE;
+			else if (fxpyp + deltaNV <= 0) {
+				fxpyp += deltaNV;
 				x--;
 				y++;
 				ssm.push_back({ x + x0, y + y0 });
 			}
+			else
+			{
+				break;
+			}
 		}
 
 		while (y < 0) {
-			deltaSE = b * b*(2 * x + 1) + a * a*(-2 * y + 1);
-			deltaS = a * a*(-2 * y + 1);
-			if (fxpyp + deltaSE <= 0) {
-				fxpyp += deltaSE;
+			deltaNV = b * b*(-2 * x + 1) + a * a*(2 * y + 1);
+			deltaN = a * a*(2 * y + 1);
+			if (fxpyp + deltaNV <= 0) {
+				fxpyp += deltaNV;
 				x--;
 				y++;
 			}
 			else
 			{
-				fxpyp += deltaS;
+				fxpyp += deltaN;
 				y++;
 			}
 			ssm.push_back({ x + x0, y + y0 });
 		}
 
 		for (auto coords : ssm) {
-			cout << coords.first << ' ' << coords.second << endl;
 			writePixel(coords.first, coords.second);
 			for (int j = coords.second; j <= y0; j++) {
 				writePixel(coords.first, j);
@@ -264,8 +270,7 @@ public:
 		deseneazaAxeOrigine();
 
 		//afisareCerc4(0, 0, 14);
-		drawEllipse(convertX(13), convertY(7), dc*13, dc*7, 100);
-		umplereElipsa(13, 7, 13, 7);
+		umplereElipsa(13, 13, 4, 8);
 	}
 };
 

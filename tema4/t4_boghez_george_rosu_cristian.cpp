@@ -6,6 +6,7 @@
 #include <math.h>
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <GL/glut.h>
 
 #define dim 300
@@ -14,8 +15,6 @@
 using namespace std;
 
 unsigned char prevKey;
-
-ifstream f("polygon.txt");
 
 class GrilaCarteziana {
 private:
@@ -285,8 +284,11 @@ public:
 			return (ymax == rhs.ymax && xmin == rhs.xmin && ratia == rhs.ratia);
 		}
 
+		double ymin;
 		double ymax;
+
 		double xmin;
+		double xmax;
 		double ratia;
 	};
 
@@ -308,8 +310,7 @@ public:
 				yM = m.vi.y > m.vf.y ? m.vi.y : m.vf.y;
 				xm = ym == m.vi.y ? m.vi.x : m.vf.x;
 				xM = yM == m.vi.y ? m.vi.x : m.vf.x;
-				cout << xm << " ";
-				et[ym].push_back({ yM, xm, (xm - xM) / (ym - yM) });
+				et[ym].push_back({ ym, yM, xm, xM, (xm - xM) / (ym - yM) });
 			}
 		}
 
@@ -319,8 +320,8 @@ public:
 				if (et[i].size() == 0) {
 					break;
 				}
-				for (int j = 1; j < et[i].size(); ++j) {
-					if (et[i][j].xmin > et[i][j - 1].xmin) {
+				for (unsigned int j = 1; j < et[i].size(); ++j) {
+					if (et[i][j].xmin < et[i][j - 1].xmin) {
 						Intersectie aux(et[i][j]);
 						et[i][j] = et[i][j - 1];
 						et[i][j - 1] = aux;
@@ -334,6 +335,14 @@ public:
 		}
 
 		return et;
+	}
+
+	vector<Intersectie> copyVector(vector<Intersectie> toCopy) {
+		vector<Intersectie> v;
+
+		for (unsigned int i = 0; i < toCopy.size(); i++)
+			v.push_back(toCopy[i]);
+		return v;
 	}
 
 	vector<vector<Intersectie>> calculSSM(vector<Muchie> p, vector<vector<Intersectie>> et) {
@@ -358,10 +367,24 @@ public:
 		}
 
 		do {
-			activeSSM = et[y];
-			for (int i = 1; i <= activeSSM.size(); ++i) {
+			activeSSM = copyVector(et[y]);
+			for (unsigned int i = 1; i < activeSSM.size(); ++i) {
+				//cout << activeSSM[i].ymax << "  " << y << endl;
 				if (activeSSM[i].ymax == y) {
-					activeSSM.erase(remove(activeSSM.begin(), activeSSM.end(), i), activeSSM.end());
+
+					cout << "before " << activeSSM.size() << endl;
+					vector<Intersectie> aux;
+					for (unsigned int j = 0; j < activeSSM.size(); j++) {
+						if (i != j) {
+							aux.push_back(activeSSM[j]);
+						}
+					}
+					activeSSM.clear();
+					for (unsigned int j = 0; j < aux.size(); j++) {
+						activeSSM.push_back(aux[j]);
+					}
+					cout << "after " << activeSSM.size() << endl;
+					//activeSSM.erase(remove(activeSSM.begin(), activeSSM.end(), i), activeSSM.end());
 				}
 			}
 
@@ -370,7 +393,7 @@ public:
 			while (k >= 2)
 			{
 				for (int i = 1; i < k; i++) {
-					if (activeSSM[i].xmin > activeSSM[i - 1].xmin) {
+					if (activeSSM[i].xmin < activeSSM[i - 1].xmin) {
 						Intersectie aux(activeSSM[i]);
 						activeSSM[i] = activeSSM[i - 1];
 						activeSSM[i - 1] = aux;
@@ -378,45 +401,96 @@ public:
 				}
 				k--;
 			}
-			finalET[y] = activeSSM;
+
+
+			finalET[y] = copyVector(activeSSM);
 			y++;
-			for (int i = 1; i < activeSSM.size(); ++i) {
+			while (y < 100 && et[y].empty()) {
+				y++;
+			}
+
+			for (unsigned int i = 0; i < activeSSM.size(); ++i) {
 				if (activeSSM[i].ratia != 0) {
 					activeSSM[i].xmin += activeSSM[i].ratia;
 				}
 			}
-		} while (!activeSSM.empty() || !et[y].empty());
+			
+		} while ((!activeSSM.empty() || !et[y].empty()) && y < 100);
 
 		return finalET;
 	}
 
+	void convScanDreptunghi(double xm, double xM, double ym, double yM)
+	{
+		for (int x = xm; x < xM; x++)
+			for (int y = ym; y < yM; y++)
+				writePixel(x, y);
+	}
+
 	void coloreaza(vector<vector<Intersectie>> finalET) {
+		int k = 0;
 		for (auto i : finalET) {
-			cout << "Intersectie: " << endl;
-			for (auto j : i) {
-				cout << j.xmin << " " << j.ymax << endl;
+			if (i.size() > 0) {
+				cout << "Intersectie: " << k << endl;
+				for (auto j : i) {
+					cout << j.xmin << " " << j.ymax << endl;
+				}
+				cout << endl;
 			}
-			cout << endl;
+			k++;
 		}
+	}
+
+	double distance(double x1, double y1, double x2, double y2) {
+		return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+	}
+
+	map<double, vector<double>> aflareIntersectii(vector<Muchie> p) {
+		map<double, vector<double>> intersectii;
+		for (double y = 0; y < n; ++y) {
+			vector<double> xsFound;
+			for (auto m : p) {
+				if ((y <= m.vi.y && y >= m.vf.y) || (y <= m.vf.y && y >= m.vi.y)) {
+					double minDist = n + 1;
+					double xToFind;
+					for (double x = min(m.vi.x, m.vf.x); x <= max(m.vi.x, m.vf.x); ++x) {
+						double diff = distance(m.vi.x, m.vi.y, x, y) + distance(m.vf.x, m.vf.y, x, y) - distance(m.vi.x, m.vi.y, m.vf.x, m.vf.y);
+						if (diff < minDist) {
+							minDist = diff;
+							xToFind = x;
+						}
+					}
+					xsFound.push_back(xToFind);
+				}
+			}
+			if (!xsFound.empty()) {
+				sort(xsFound.begin(), xsFound.end());
+				intersectii.insert({ y, xsFound });
+			}
+		}
+		return intersectii;
 	}
 
 	vector<Muchie> crearePoligon() {
 		int n;
+		ifstream f("polygon.txt");
+
 		f >> n;
 
 		int i = 0;
 		vector<Muchie> p;
 
-		int x, y;
+		double x, y;
+
 		f >> x >> y;
 		i++;
-		
+
 		glColor3f(1, 0, 0);
 		glBegin(GL_LINE_LOOP);
 		glVertex2f(convertX(x), convertY(y));
 		while (i < n)
 		{
-			int x2, y2;
+			double x2, y2;
 			f >> x2 >> y2;
 			Varf v1 = { x, y };
 			Varf v2 = { x2, y2 };
@@ -439,9 +513,29 @@ public:
 
 		glEnd();
 
+		f.close();
+
 		return p;
 
 	}
+
+	void coloreaza_poligon(map<double, vector<double>> intersectii) {
+
+		auto it = intersectii.begin();
+		bool shouldColor;
+		while (it != intersectii.end())
+		{
+			for (unsigned int second = 1; second < (*it).second.size(); second += 2) {
+				unsigned int first = second - 1;
+				for (double iterator = (*it).second[first]; iterator <= (*it).second[second]; ++iterator) {
+					writePixel(iterator, (*it).first);
+				}
+			}
+
+			it++;
+		}
+	}
+
 
 	void draw() {
 		deseneazaGrila();
@@ -450,13 +544,14 @@ public:
 		//afisareCerc4(0, 0, 14);
 		//umplereElipsa(13, 13, 4, 8);
 		vector<Muchie> p = crearePoligon();
-		vector<vector<Intersectie>> et = initET(p);
-		et = calculSSM(p, et);
-		coloreaza(et);
 
-		/*for (auto m : p) {
-			cout << m.vi.x << " " << m.vi.y << "; "<< m.vf.x << " " << m.vf.y << endl;
-		}*/
+		map<double, vector<double>> intersectii = aflareIntersectii(p);
+		coloreaza_poligon(intersectii);
+		
+		//vector<vector<Intersectie>> et = initET(p);
+		//coloreaza(et);
+		//et = calculSSM(p, et);
+		//coloreaza(et);
 	}
 };
 

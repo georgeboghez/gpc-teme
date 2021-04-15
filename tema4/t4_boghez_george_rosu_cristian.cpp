@@ -299,7 +299,7 @@ public:
 		double xm, ym, xM, yM;
 		bool change;
 
-		for (int i = 0; i < 100; ++i) {
+		for (int i = 0; i <= getLargestY(p); ++i) {
 			vector<Intersectie> v;
 			et.push_back(v);
 		}
@@ -314,7 +314,7 @@ public:
 			}
 		}
 
-		for (int i = 0; i < 100; ++i) {
+		for (int i = 0; i <= getLargestY(p); ++i) {
 			do {
 				change = false;
 				if (et[i].size() == 0) {
@@ -328,9 +328,6 @@ public:
 						change = true;
 					}
 				}
-				//if (et[i].size() > 1) {
-				//	cout << et[i][0].xmin << " " << et[i][1].xmin << endl;
-				//}
 			} while (change);
 		}
 
@@ -345,16 +342,29 @@ public:
 		return v;
 	}
 
-	vector<vector<Intersectie>> calculSSM(vector<Muchie> p, vector<vector<Intersectie>> et) {
-		vector<Intersectie> activeSSM;
-		vector<vector<Intersectie>> finalET;
+	double getLargestY(vector<Muchie> p) {
+		double largestY = 0;
+		for (auto m : p) {
+			if (m.vi.y > largestY) {
+				largestY = m.vi.y;
+			}
+			if (m.vf.y > largestY) {
+				largestY = m.vf.y;
+			}
+		}
+		return largestY;
+	}
+
+	map<double, vector<double>> calculSSM(vector<Muchie> p, vector<vector<Intersectie>> et) {
+		vector<vector<Intersectie>> activeSSM;
+
+		map<double, vector<vector<Intersectie>>> finalMap;
+		map<double, vector<double>> mp;
 
 		int y = -1, k;
 
 		bool done = false;
-		for (int i = 0; i < 100; ++i) {
-			vector<Intersectie> v;
-			finalET.push_back(v);
+		for (int i = 0; i <= getLargestY(p); ++i) {
 
 			if (!et[i].empty() && !done) {
 				y = i;
@@ -363,82 +373,100 @@ public:
 		}
 
 		if (y == -1) {
-			return finalET;
+			return mp;
 		}
 
 		do {
-			activeSSM = copyVector(et[y]);
-			for (unsigned int i = 1; i < activeSSM.size(); ++i) {
-				//cout << activeSSM[i].ymax << "  " << y << endl;
-				if (activeSSM[i].ymax == y) {
+			activeSSM.push_back(copyVector(et[y]));
 
-					cout << "before " << activeSSM.size() << endl;
-					vector<Intersectie> aux;
-					for (unsigned int j = 0; j < activeSSM.size(); j++) {
-						if (i != j) {
-							aux.push_back(activeSSM[j]);
+			for (unsigned index = 0; index < activeSSM.size(); ++index) {
+				for (unsigned int i = 0; i < activeSSM[index].size(); ++i) {
+					if (activeSSM[index][i].ymax == y) {
+
+						vector<Intersectie> aux;
+						for (unsigned int j = 0; j < activeSSM[index].size(); j++) {
+							if (i != j) {
+								aux.push_back(activeSSM[index][j]);
+							}
+						}
+						activeSSM[index].clear();
+						for (unsigned int j = 0; j < aux.size(); j++) {
+							activeSSM[index].push_back(aux[j]);
+						}
+						//activeSSM.erase(remove(activeSSM.begin(), activeSSM.end(), i), activeSSM.end());
+					}
+				}
+
+				k = activeSSM[index].size();
+
+				while (k >= 2)
+				{
+					for (int i = 1; i < k; i++) {
+						if (activeSSM[index][i].xmin < activeSSM[index][i - 1].xmin) {
+							Intersectie aux(activeSSM[index][i]);
+							activeSSM[index][i] = activeSSM[index][i - 1];
+							activeSSM[index][i - 1] = aux;
 						}
 					}
-					activeSSM.clear();
-					for (unsigned int j = 0; j < aux.size(); j++) {
-						activeSSM.push_back(aux[j]);
-					}
-					cout << "after " << activeSSM.size() << endl;
-					//activeSSM.erase(remove(activeSSM.begin(), activeSSM.end(), i), activeSSM.end());
+					k--;
 				}
 			}
 
-			k = activeSSM.size();
+			finalMap.insert({ y, activeSSM });
 
-			while (k >= 2)
-			{
-				for (int i = 1; i < k; i++) {
-					if (activeSSM[i].xmin < activeSSM[i - 1].xmin) {
-						Intersectie aux(activeSSM[i]);
-						activeSSM[i] = activeSSM[i - 1];
-						activeSSM[i - 1] = aux;
-					}
-				}
-				k--;
-			}
-
-
-			finalET[y] = copyVector(activeSSM);
 			y++;
-			while (y < 100 && et[y].empty()) {
-				y++;
-			}
-
-			for (unsigned int i = 0; i < activeSSM.size(); ++i) {
-				if (activeSSM[i].ratia != 0) {
-					activeSSM[i].xmin += activeSSM[i].ratia;
+			for (unsigned int index = 0; index < activeSSM.size(); ++index) {
+				for (unsigned int i = 0; i < activeSSM[index].size(); ++i) {
+					if (activeSSM[index][i].ratia != 0) {
+						activeSSM[index][i].xmin += activeSSM[index][i].ratia;
+					}
 				}
 			}
-			
-		} while ((!activeSSM.empty() || !et[y].empty()) && y < 100);
+		} while ((!activeSSM.empty() || !et[y].empty()) && y <= getLargestY(p));
 
-		return finalET;
-	}
-
-	void convScanDreptunghi(double xm, double xM, double ym, double yM)
-	{
-		for (int x = xm; x < xM; x++)
-			for (int y = ym; y < yM; y++)
-				writePixel(x, y);
-	}
-
-	void coloreaza(vector<vector<Intersectie>> finalET) {
-		int k = 0;
-		for (auto i : finalET) {
-			if (i.size() > 0) {
-				cout << "Intersectie: " << k << endl;
-				for (auto j : i) {
-					cout << j.xmin << " " << j.ymax << endl;
+		auto it = finalMap.begin();
+		while (it != finalMap.end()) {
+			vector<double> v;
+			for (auto intersectionVector : (*it).second) {
+				for (auto intersection : intersectionVector) {
+					if (floor(intersection.xmin) != ceil(intersection.xmin)) {
+						if (static_cast<int>(floor(intersection.xmin)) % 2 == 1) {
+							v.push_back(floor(intersection.xmin));
+						}
+						else {
+							v.push_back(ceil(intersection.xmin));
+						}
+					}
+					else {
+						v.push_back(intersection.xmin);
+					}
 				}
-				cout << endl;
 			}
-			k++;
+
+			if (!v.empty()) {
+				bubble_sort(v);
+				mp.insert({ (*it).first, v });
+			}
+
+			it++;
 		}
+
+		return mp;
+	}
+
+	void bubble_sort(vector<double> &et) {
+		bool change;
+		do {
+			change = false;
+			for (unsigned int j = 1; j < et.size(); ++j) {
+				if (et[j] < et[j - 1]) {
+					double aux(et[j]);
+					et[j] = et[j - 1];
+					et[j - 1] = aux;
+					change = true;
+				}
+			}
+		} while (change);
 	}
 
 	double distance(double x1, double y1, double x2, double y2) {
@@ -460,6 +488,7 @@ public:
 							xToFind = x;
 						}
 					}
+
 					xsFound.push_back(xToFind);
 				}
 			}
@@ -519,39 +548,82 @@ public:
 
 	}
 
-	void coloreaza_poligon(map<double, vector<double>> intersectii) {
+	void coloreaza(map<double, vector<double>> intersectii) {
 
 		auto it = intersectii.begin();
-		bool shouldColor;
 		while (it != intersectii.end())
 		{
+			/*if ((*it).second.size() > 1) {
+				(*it).second.back() -= 1;
+			}*/
 			for (unsigned int second = 1; second < (*it).second.size(); second += 2) {
 				unsigned int first = second - 1;
 				for (double iterator = (*it).second[first]; iterator <= (*it).second[second]; ++iterator) {
 					writePixel(iterator, (*it).first);
 				}
 			}
-
 			it++;
 		}
 	}
 
+	void coloreaza2(map<double, vector<double>> intersectii) {
 
-	void draw() {
+		auto it = intersectii.begin();
+		while (it != intersectii.end())
+		{
+			if ((*it).second.size() > 1) {
+				(*it).second.back() -= 1;
+			}
+			for (unsigned int second = 1; second < (*it).second.size(); second += 2) {
+				unsigned int first = second - 1;
+				for (double iterator = (*it).second[first]; iterator <= (*it).second[second]; ++iterator) {
+					writePixel(iterator, (*it).first);
+				}
+			}
+			it++;
+		}
+	}
+
+	void draw1() {
 		deseneazaGrila();
 		deseneazaAxeOrigine();
 
-		//afisareCerc4(0, 0, 14);
-		//umplereElipsa(13, 13, 4, 8);
-		vector<Muchie> p = crearePoligon();
+		afisareCerc4(0, 0, 14);
+	}
 
+	void draw2() {
+		deseneazaGrila();
+		deseneazaAxeOrigine();
+
+		umplereElipsa(13, 13, 4, 8);
+	}
+
+	void draw3() {
+		deseneazaGrila();
+		deseneazaAxeOrigine();
+
+		vector<Muchie> p = crearePoligon();
+		vector<vector<Intersectie>> et = initET(p);
+		map<double, vector<double>> finalMap = calculSSM(p, et);
+		coloreaza(finalMap);
+	}
+
+	void draw4() {
+		deseneazaGrila();
+		deseneazaAxeOrigine();
+
+		vector<Muchie> p = crearePoligon();
+		vector<vector<Intersectie>> et = initET(p);
+		map<double, vector<double>> finalMap = calculSSM(p, et);
+		coloreaza2(finalMap);
+	}
+
+	void draw5() {
+		deseneazaGrila();
+		deseneazaAxeOrigine();
+		vector<Muchie> p = crearePoligon();
 		map<double, vector<double>> intersectii = aflareIntersectii(p);
-		coloreaza_poligon(intersectii);
-		
-		//vector<vector<Intersectie>> et = initET(p);
-		//coloreaza(et);
-		//et = calculSSM(p, et);
-		//coloreaza(et);
+		coloreaza(intersectii);
 	}
 };
 
@@ -565,9 +637,26 @@ void Init(void) {
 }
 
 void Display(void) {
-	glClear(GL_COLOR_BUFFER_BIT);
 	GrilaCarteziana GC(27, 27, 0, 0);
-	GC.draw();
+	glClear(GL_COLOR_BUFFER_BIT);
+	switch (prevKey)
+	{
+	case '2':
+		GC.draw2();
+		break;
+	case '3':
+		GC.draw3();
+		break;
+	case '4':
+		GC.draw4();
+		break;
+	case '5':
+		GC.draw5();
+		break;
+	default:
+		GC.draw1();
+	}
+
 	glFlush();
 }
 
